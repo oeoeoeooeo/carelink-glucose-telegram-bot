@@ -1,0 +1,8 @@
+# 本 bot 自身的相依套件
+python-telegram-bot[job-queue]==21.*
+playwright>=1.40            # 登入 / 保活用的瀏覽器自動化（裝完跑 playwright install chromium）
+requests>=2.31             # 純 HTTP 抓血糖
+matplotlib>=3.7            # 趨勢圖
+gspread>=6.0               # Google Sheets（選填）
+google-auth>=2.0
+python-dotenv>=1.0

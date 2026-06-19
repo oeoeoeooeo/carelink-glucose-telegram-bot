@@ -1,0 +1,36 @@
+# ===== 機敏：絕對不可上傳 Secrets — never commit =====
+.env
+.env.local
+*.rtf
+
+# 登入狀態 / token / 憑證 Login state / tokens / credentials
+carelink_state.json
+logindata.json
+service_account.json
+*.token
+*.key
+*.pem
+
+# 病患醫療資料 / PII Patient data / PII（含姓名、血糖）
+raw_dump.json
+connect_data.json
+*_dump.json
+test_chart.png
+
+# 瀏覽器 profile（含登入 cookie）Browser profile
+browser-profile/
+
+# Claude Code 本機設定（可能記錄含 token 的指令）
+.claude/
+
+# ===== 執行期產物 Runtime =====
+*.log
+web_endpoint.txt
+
+# ===== 環境 / 相依 Env / deps =====
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# 注意：docs/ 下的示意圖（假資料）要保留，所以這裡不 ignore 整類 *.png
