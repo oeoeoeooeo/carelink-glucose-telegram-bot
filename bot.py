@@ -16,6 +16,7 @@ import io
 import json
 import logging
 from datetime import datetime, timedelta
+from logging.handlers import RotatingFileHandler
 
 from telegram import Update
 from telegram.constants import ParseMode
@@ -29,7 +30,13 @@ from chart import render_chart
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        RotatingFileHandler(config.BASE_DIR / "carelink_bot.log",
+                            maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"),
+    ],
 )
+logging.getLogger("httpx").setLevel(logging.WARNING)  # 每 10 秒的 getUpdates 輪詢不用進 log
 log = logging.getLogger("carelink_bot")
 
 async def fetch_data():
@@ -44,7 +51,7 @@ class State:
         self.condition = "in_range"   # in_range | low | high
         self.last_alert_at = None
         self.last_reading_ts = None
-        self.stale_warned = False
+        self.stale_alert_at = None    # 最後一次「資料逾時」提醒時間；None = 資料正常
 
 
 state = State()
@@ -111,17 +118,20 @@ async def poll_job(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now()
     state.last_reading_ts = reading.timestamp or now
 
-    # 資料逾時（感測器/上傳中斷）
+    # 資料逾時（感測器/上傳中斷）：持續逾時每 REALERT_MINUTES 重複提醒，恢復時報平安
     if reading.timestamp:
         age = now - reading.timestamp
         if age > timedelta(minutes=config.STALE_MINUTES):
-            if not state.stale_warned:
+            if state.stale_alert_at is None or \
+                    (now - state.stale_alert_at) >= timedelta(minutes=config.REALERT_MINUTES):
                 await push(context,
                            f"⚠️ *資料逾時*\n最後一筆血糖在 {reading.timestamp.strftime('%m/%d %H:%M')}"
                            f"（已 {int(age.total_seconds() // 60)} 分鐘沒更新），可能上傳中斷或感測器離線。")
-                state.stale_warned = True
+                state.stale_alert_at = now
             return
-    state.stale_warned = False
+    if state.stale_alert_at is not None:
+        state.stale_alert_at = None
+        await push(context, f"✅ *資料恢復更新*\n{fmt_reading(reading)}")
 
     if reading.sg < config.LOW_THRESHOLD:
         cond = "low"
