@@ -91,16 +91,19 @@ $ python bot.py
 
 ## 8. 設定 24 小時自動執行（launchd）
 
-用內附腳本自動產生並安裝兩個服務（會用你目前的專案路徑與 venv）：
+用內附腳本自動產生並安裝三個服務（會用你目前的專案路徑與 venv）：
 
 ```bash
 $ ./scripts/install_launchd.sh
 ```
 
 它會：
-- 依你的專案路徑產生 `com.carelink.browser.plist`、`com.carelink.bot.plist`
+- 依你的專案路徑產生 `com.carelink.browser.plist`、`com.carelink.bot.plist`、`com.carelink.watchdog.plist`
 - 安裝到 `~/Library/LaunchAgents/` 並啟動
-- 兩個服務都會開機自動啟動、當掉自動重啟
+- 保活與 bot 服務都會開機自動啟動、當掉自動重啟
+- **watchdog（看門狗）**每 10 分鐘檢查一次：`raw_dump.json` 超過 30 分鐘沒更新
+  （CareLink 強制登出後自動重新授權偶爾會卡死），就自動重啟保活服務自癒，
+  不用手動處理；觸發時會在 `watchdog.log` 留一行紀錄
 
 確認在跑（中間欄 0 = 正常）：
 
@@ -122,6 +125,7 @@ $ launchctl kickstart -k gui/$(id -u)/com.carelink.browser
 # 停用
 $ launchctl bootout gui/$(id -u)/com.carelink.bot
 $ launchctl bootout gui/$(id -u)/com.carelink.browser
+$ launchctl bootout gui/$(id -u)/com.carelink.watchdog
 ```
 
 > 到「系統設定 → 電池／鎖定畫面」把這台 Mac 設成**不要自動睡眠**，睡著就不會抓資料。
@@ -133,7 +137,7 @@ $ launchctl bootout gui/$(id -u)/com.carelink.browser
 
 | 症狀 | 處理 |
 |------|------|
-| keep.log 一直「被導回登入頁／抓取失敗」 | CareLink session 失效，重跑 `python carelink_web.py login` |
+| keep.log 出現「抓取失敗／token 過期」後卡住 | watchdog 30 分鐘內會自動重啟保活服務自癒（看 `watchdog.log`）；若重啟後仍失敗才需重跑 `python carelink_web.py login` |
 | `/now` 無讀數、`TRANSMITTER_DISCONNECTED` | CGM 傳輸器離線，等恢復連線 |
 | `/now` 數字錯誤或空白 | `/dump` 匯出，移除個資後開 Issue 給社群校正 |
 | bot 沒主動發警報 | `TELEGRAM_CHAT_ID` 沒填或填錯，用 `/id` 重拿 |

@@ -66,7 +66,7 @@ A small program that runs on an always‑on Mac at home, **watches your family m
 
 ## 運作原理 / How it works
 
-兩個各自獨立、開機自動啟動的服務（launchd）：
+三個各自獨立、開機自動啟動的服務（launchd）：
 
 ```
 [瀏覽器保活服務]  開一個 Chrome 一直開著，保住 CareLink 登入、
@@ -80,6 +80,10 @@ A small program that runs on an always‑on Mac at home, **watches your family m
    bot.py         每 3 小時發摘要 + 趨勢圖；回應指令
         ▼
    Telegram 群組（你 + 另一半）   +   Google Sheets（選填）
+
+[看門狗 watchdog]  每 10 分鐘檢查 raw_dump.json；卡超過 30 分鐘
+   watchdog.sh     就自動重啟保活服務（CareLink 偶爾強制登出且
+                   重新授權卡死時自癒，不用手動處理）
 ```
 
 **幾個關鍵設計（也是踩過坑換來的）：**
@@ -88,11 +92,14 @@ A small program that runs on an always‑on Mac at home, **watches your family m
 - **登入狀態存成 storage_state（session cookie）**，不靠瀏覽器 profile（session cookie 關掉就消失）。
 - **抓資料走純 HTTP**：用 cookie 裡的權杖當 `Authorization: Bearer`，不靠脆弱的瀏覽器畫面操作。
 - **token 自動刷新**：常駐的瀏覽器會在過期前自動換新權杖，**不用每天重新登入**。
-- 只有 CareLink 長期 session 失效（久沒用／被登出）時，才需要重跑一次登入。
+- **卡死自動自癒**：CareLink 不定期強制登出、重新授權偶爾卡死，看門狗會自動重啟保活服務（2–4 分鐘內恢復）。
+- 只有 CareLink 長期 session 失效（重啟也救不回）時，才需要重跑一次登入。
 
-> Two independent launchd services: a browser stays logged in and refreshes the
+> Three independent launchd services: a browser stays logged in and refreshes the
 > token automatically while a pure‑HTTP call fetches glucose into a file; the
-> Telegram bot reads that file and sends alerts/summaries. No VPN needed.
+> Telegram bot reads that file and sends alerts/summaries; a watchdog restarts
+> the keepalive service if data stalls (CareLink occasionally force-logs-out and
+> the re-auth can hang). No VPN needed.
 
 ## 安裝 / Get started
 

@@ -26,6 +26,7 @@ browser-profile/
 # ===== 執行期產物 Runtime =====
 *.log
 *.log.old
+.watchdog_last_kick
 web_endpoint.txt
 
 # ===== 環境 / 相依 Env / deps =====

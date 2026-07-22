@@ -58,7 +58,32 @@ EOF
 make_plist "com.carelink.browser" "$AGENTS/com.carelink.browser.plist" "$PROJECT_DIR/carelink_web.py" keep 240
 make_plist "com.carelink.bot"     "$AGENTS/com.carelink.bot.plist"     "$PROJECT_DIR/bot.py"
 
-for svc in com.carelink.browser com.carelink.bot; do
+# 看門狗：raw_dump.json 超過 30 分鐘沒更新就自動重啟保活服務（每 600 秒檢查一次）
+# Watchdog: auto-restarts the keepalive service if raw_dump.json goes stale for 30+ min
+cat > "$AGENTS/com.carelink.watchdog.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.carelink.watchdog</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/sh</string>
+        <string>$PROJECT_DIR/watchdog.sh</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>$PROJECT_DIR</string>
+    <key>StartInterval</key><integer>600</integer>
+    <key>RunAtLoad</key><true/>
+    <key>StandardOutPath</key><string>$PROJECT_DIR/watchdog.log</string>
+    <key>StandardErrorPath</key><string>$PROJECT_DIR/watchdog.log</string>
+</dict>
+</plist>
+EOF
+echo "已產生 $AGENTS/com.carelink.watchdog.plist"
+
+for svc in com.carelink.browser com.carelink.bot com.carelink.watchdog; do
   launchctl bootout "gui/$UID_NUM/$svc" 2>/dev/null || true
   launchctl bootstrap "gui/$UID_NUM" "$AGENTS/$svc.plist"
   echo "已啟動 $svc"
